@@ -1,43 +1,51 @@
 "use strict";
-const input = document.getElementById("text-input");
-const noMaskCheckbox = document.getElementById("no-mask");
-const info = document.getElementById("info");
-const dataFlat = document.getElementById("dataFlat");
-const dataInfo = document.getElementById("dataInfo");
-const outputText = document.getElementById("outputText");
 const error = document.getElementById("error");
+const encodedUrl = document.getElementById("encoded-url");
 const scale = 8;
 function decodeNumeric(bits, numDigits) {
     let result = "";
     let valid = true;
+    const invalidBits = new Set();
     let i = 0;
     let remaining = numDigits;
     while (remaining >= 3) {
+        const groupStart = i;
         let val = 0;
         for (let b = 0; b < 10; b++)
             val = (val << 1) | bits[i++];
-        if (val > 999)
+        if (val > 999) {
             valid = false;
+            for (let b = groupStart; b < i; b++)
+                invalidBits.add(b);
+        }
         result += val.toString().padStart(3, "0");
         remaining -= 3;
     }
     if (remaining === 2) {
+        const groupStart = i;
         let val = 0;
         for (let b = 0; b < 7; b++)
             val = (val << 1) | bits[i++];
-        if (val > 99)
+        if (val > 99) {
             valid = false;
+            for (let b = groupStart; b < i; b++)
+                invalidBits.add(b);
+        }
         result += val.toString().padStart(2, "0");
     }
     else if (remaining === 1) {
+        const groupStart = i;
         let val = 0;
         for (let b = 0; b < 4; b++)
             val = (val << 1) | bits[i++];
-        if (val > 9)
+        if (val > 9) {
             valid = false;
+            for (let b = groupStart; b < i; b++)
+                invalidBits.add(b);
+        }
         result += val.toString();
     }
-    return { text: result, valid };
+    return { text: result, valid, invalidBits };
 }
 const dataPrefix = location.origin + location.pathname.replace(/\/(index\.html)?$/, "") + "?";
 // Convert prefix to byte array (ASCII)
@@ -53,17 +61,11 @@ const availableBits = v4LowDataBits - prefixSegBitsTotal - numericHeaderBitsTota
 const numericDigits = Math.floor(availableBits / 10) * 3
     + (availableBits % 10 >= 7 ? 2 : availableBits % 10 >= 4 ? 1 : 0);
 let seg;
-input.value = "0".repeat(numericDigits);
 function makeQr(numericText) {
     const prefixSeg = qrcodegen.QrSegment.makeBytes(prefixBytes);
     const numSeg = qrcodegen.QrSegment.makeNumeric(numericText);
     updateState(numSeg.getData());
-    const mask = noMaskCheckbox.checked ? -2 : 0;
-    const minVersion = 4;
-    const maxVersion = 4;
-    const eccLevel = qrcodegen.QrCode.Ecc.LOW;
-    const boostEcl = false;
-    const qr = qrcodegen.QrCode.encodeSegments([prefixSeg, numSeg], eccLevel, minVersion, maxVersion, mask, boostEcl);
+    const qr = qrcodegen.QrCode.encodeSegments([prefixSeg, numSeg], qrcodegen.QrCode.Ecc.LOW, 4, 4, 0, false);
     return { qr, numSeg };
 }
 // Byte segment: 4 (mode) + 8 (count) + prefix_len*8 (data) bits
@@ -73,8 +75,7 @@ const numericHeaderBits = numericHeaderBitsTotal;
 function buildQrFromRawBits() {
     const prefixSeg = qrcodegen.QrSegment.makeBytes(prefixBytes);
     const numSeg = new qrcodegen.QrSegment(qrcodegen.QrSegment.Mode.NUMERIC, numericDigits, seg.slice());
-    const mask = noMaskCheckbox.checked ? -2 : 0;
-    const qr = qrcodegen.QrCode.encodeSegments([prefixSeg, numSeg], qrcodegen.QrCode.Ecc.LOW, 4, 4, mask, false);
+    const qr = qrcodegen.QrCode.encodeSegments([prefixSeg, numSeg], qrcodegen.QrCode.Ecc.LOW, 4, 4, 0, false);
     return { qr, numSeg };
 }
 function flipBitN(index) {
@@ -82,42 +83,50 @@ function flipBitN(index) {
         return;
     seg[index] = seg[index] === 1 ? 0 : 1;
     updateState(seg);
-    const decoded = decodeNumeric(seg, numericDigits);
-    input.value = decoded.text;
     renderFromBits();
-    error.textContent = decoded.valid ? "" : "Invalid: bit pattern exceeds numeric encoding range";
 }
 function updateState(s) {
     seg = s;
-    dataInfo.textContent = `Data: ${seg.length} bits`;
-    dataFlat.textContent = seg.map((b) => (b ? "x" : "_")).join("");
+    const decoded = decodeNumeric(seg, numericDigits);
+    if (decoded.valid) {
+        encodedUrl.textContent = dataPrefix + decoded.text;
+        error.textContent = "";
+    }
+    else {
+        encodedUrl.textContent = "";
+        error.textContent = "Not scannable. Try flipping some bits.";
+    }
+    invalidBits = decoded.invalidBits;
 }
+let invalidBits = new Set();
 function renderFromBits() {
-    error.textContent = "";
     const { qr, numSeg } = buildQrFromRawBits();
-    info.textContent = `Version: ${qr.version} | Size: ${qr.size}×${qr.size} | Mask: ${qr.mask}`;
     const border = 2;
     const svgContainer = document.getElementById("qr-svg");
     svgContainer.innerHTML = qrToSvg(qr, border, numSeg);
 }
 function render() {
-    const text = input.value;
-    if (!text || !/^[0-9]+$/.test(text)) {
-        info.textContent = "";
-        const svgContainer = document.getElementById("qr-svg");
-        svgContainer.innerHTML = "";
-        error.textContent = text
-            ? "Invalid: only digits 0-9 allowed"
-            : "";
-        return;
-    }
     error.textContent = "";
-    const { qr, numSeg } = makeQr(text);
-    info.textContent = `Version: ${qr.version} | Size: ${qr.size}×${qr.size} | Mask: ${qr.mask}`;
-    const border = 2;
-    // Generate SVG
-    const svgContainer = document.getElementById("qr-svg");
-    svgContainer.innerHTML = qrToSvg(qr, border, numSeg);
+    const numericText = "0".repeat(numericDigits);
+    const { qr, numSeg } = makeQr(numericText);
+    // Flip bits so all paintable cells start as light blue
+    const dataBits = numSeg.getData().length;
+    const positions = getDataBitPositions(qr, prefixSegBits + numericHeaderBits, prefixSegBits + numericHeaderBits + dataBits);
+    for (const [key, bitIndex] of positions) {
+        const [x, y] = key.split(",").map(Number);
+        if (qr.getModule(x, y)) {
+            seg[bitIndex] = seg[bitIndex] === 1 ? 0 : 1;
+        }
+    }
+    // Fix any invalid groups by zeroing their bits
+    const check = decodeNumeric(seg, numericDigits);
+    for (const b of check.invalidBits) {
+        seg[b] = 0;
+    }
+    updateState(seg);
+    error.textContent = "";
+    encodedUrl.textContent = "";
+    renderFromBits();
 }
 // Returns a map from "x,y" to bit index for data bits in the given range.
 // Uses the same zigzag traversal as drawCodewords.
@@ -157,7 +166,7 @@ function qrToSvg(qr, border, seg) {
             const cls = isClickable ? "qr-cell" : "qr-func";
             const bitAttr = isClickable ? ` data-bit="${bitIndex}"` : "";
             const fill = isClickable
-                ? (dark ? "#0000aa" : "#ddeeff")
+                ? (invalidBits.has(bitIndex) ? (dark ? "#aa0000" : "#ffdddd") : (dark ? "#0000aa" : "#ddeeff"))
                 : (dark ? "#000000" : "#ffffff");
             rects += `<rect x="${x + border}" y="${y + border}" width="1" height="1" fill="${fill}" data-x="${x}" data-y="${y}" class="${cls}"${bitAttr}/>`;
         }
@@ -184,16 +193,17 @@ function setupColorPicker() {
 setupColorPicker();
 function setupSvgClicks() {
     const svgContainer = document.getElementById("qr-svg");
-    const flipLog = document.getElementById("flip-log");
     let painting = false;
     function paintCell(target) {
         if (!target.classList.contains("qr-cell"))
             return;
         const currentFill = target.getAttribute("fill");
-        if (currentFill === activeColor)
+        const isDark = currentFill === "#0000aa" || currentFill === "#aa0000";
+        const wantDark = activeColor === "#0000aa";
+        if (isDark === wantDark)
             return;
         const bitIndex = parseInt(target.getAttribute("data-bit"));
-        flipLog.textContent = `Flipped data bit ${bitIndex}`;
+        document.getElementById("color-picker").classList.remove("hint");
         flipBitN(bitIndex);
     }
     svgContainer.addEventListener("mousedown", (e) => {
@@ -210,8 +220,4 @@ function setupSvgClicks() {
     });
 }
 setupSvgClicks();
-input.addEventListener("input", () => {
-    render();
-});
-noMaskCheckbox.addEventListener("change", render);
 render();
