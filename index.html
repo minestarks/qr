@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 0.5rem;
+            font-size: 1rem;
+            box-sizing: border-box;
+            text-transform: uppercase;
+        }
+        #error {
+            color: red;
+            margin-top: 0.5rem;
+        }
+        #qr-svg, #color-picker {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M12.1.5l3.4 3.4-10 10H2.1v-3.4z" fill="black" stroke="white" stroke-width=".5"/></svg>') 0 16, crosshair;
+        }
+    </style>
+</head>
+<body>
+    <h1>QR Code Generator</h1>
+    <input type="text" id="text-input" placeholder="A-Z 0-9 SP $%*+-./:">
+    <div style="margin-top:0.5rem"><label><input type="checkbox" id="no-mask"> No mask (raw data pattern)</label></div>
+    <p id="error"></p>
+    <p id="dataFlat" style="font-size:0.85rem;color:#555;font-family:monospace"></p>
+    <p id="dataInfo" style="font-size:0.85rem;color:#555"></p>
+    <p id="info" style="font-size:0.85rem;color:#555"></p>
+    <div style="margin-top:1rem;display:flex;gap:1rem;align-items:flex-start">
+      <div id="qr-svg"></div>
+      <div id="color-picker" style="display:flex;flex-direction:column;gap:0.5rem">
+        <div data-color="#0000aa" style="width:32px;height:32px;background:#0000aa;border:3px solid #ff0000;cursor:pointer;box-sizing:border-box" title="Dark (1)"></div>
+        <div data-color="#ddeeff" style="width:32px;height:32px;background:#ddeeff;border:3px solid transparent;cursor:pointer;box-sizing:border-box" title="Light (0)"></div>
+      </div>
+    </div>
+    <p id="flip-log" style="font-size:0.85rem;color:#555"></p>
+
+    <script src="dist/qrcodegen.js"></script>
+    <script src="dist/demo.js"></script>
+</body>
+</html>

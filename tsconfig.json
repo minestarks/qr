@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "target": "ES2017",
+    "strict": true
+  },
+  "include": ["src/**/*.ts"]
+}
