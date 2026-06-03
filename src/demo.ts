@@ -130,6 +130,7 @@ function render(): void {
     if (/^[0-9]+$/.test(params) && params.length === numericDigits) {
       const numSeg = qrcodegen.QrSegment.makeNumeric(params);
       updateState(numSeg.getData());
+      setDrawingMode(false);
       renderFromBits();
       return;
     }
@@ -205,7 +206,7 @@ function qrToSvg(
       const cls = isClickable ? "qr-cell" : "qr-func";
       const bitAttr = isClickable ? ` data-bit="${bitIndex}"` : "";
       const fill = isClickable
-        ? (invalidBits.has(bitIndex!) ? (dark ? "#aa0000" : "#ffdddd") : (dark ? "#0000aa" : "#ddeeff"))
+        ? (invalidBits.has(bitIndex!) ? (dark ? "#aa0000" : "#ffdddd") : (dark ? darkFill() : lightFill()))
         : (dark ? "#000000" : "#ffffff");
       rects += `<rect x="${x + border}" y="${y + border}" width="1" height="1" fill="${fill}" data-x="${x}" data-y="${y}" class="${cls}"${bitAttr}/>`;
     }
@@ -216,11 +217,30 @@ ${rects}
 </svg>`;
 }
 
-let activeColor = "#0000aa"; // dark by default
+let activeColor = "dark"; // "dark" or "light"
+let drawingMode = true;
+
+function darkFill(): string { return drawingMode ? "#0000aa" : "#000000"; }
+function lightFill(): string { return drawingMode ? "#ddeeff" : "#ffffff"; }
+
+function setDrawingMode(on: boolean): void {
+  drawingMode = on;
+  const picker = document.getElementById("color-picker") as HTMLElement;
+  const toggle = document.getElementById("draw-toggle") as HTMLElement;
+  const swatches = picker.querySelectorAll("[data-color]");
+  toggle.style.borderColor = drawingMode ? "#ff0000" : "transparent";
+  swatches.forEach((el) => {
+    (el as HTMLElement).style.opacity = drawingMode ? "1" : "0.3";
+    (el as HTMLElement).style.pointerEvents = drawingMode ? "auto" : "none";
+  });
+}
 
 function setupColorPicker(): void {
   const picker = document.getElementById("color-picker") as HTMLElement;
+  const toggle = document.getElementById("draw-toggle") as HTMLElement;
+
   picker.addEventListener("click", (e) => {
+    if (!drawingMode) return;
     const target = (e.target as HTMLElement).closest("[data-color]") as HTMLElement | null;
     if (!target) return;
     activeColor = target.getAttribute("data-color")!;
@@ -228,6 +248,11 @@ function setupColorPicker(): void {
       (el as HTMLElement).style.borderColor =
         el.getAttribute("data-color") === activeColor ? "#ff0000" : "transparent";
     });
+  });
+
+  toggle.addEventListener("click", () => {
+    setDrawingMode(!drawingMode);
+    renderFromBits();
   });
 }
 setupColorPicker();
@@ -237,10 +262,11 @@ function setupSvgClicks(): void {
   let painting = false;
 
   function paintCell(target: SVGElement): void {
+    if (!drawingMode) return;
     if (!target.classList.contains("qr-cell")) return;
     const currentFill = target.getAttribute("fill");
-    const isDark = currentFill === "#0000aa" || currentFill === "#aa0000";
-    const wantDark = activeColor === "#0000aa";
+    const isDark = currentFill === darkFill() || currentFill === "#aa0000";
+    const wantDark = activeColor === "dark";
     if (isDark === wantDark) return;
     const bitIndex = parseInt(target.getAttribute("data-bit")!);
     flipBitN(bitIndex);
