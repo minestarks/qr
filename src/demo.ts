@@ -141,7 +141,6 @@ function render(): void {
   }
   updateState(seg);
   error.textContent = "";
-  encodedUrl.textContent = "";
   renderFromBits();
 }
 

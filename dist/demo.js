@@ -125,7 +125,6 @@ function render() {
     }
     updateState(seg);
     error.textContent = "";
-    encodedUrl.textContent = "";
     renderFromBits();
 }
 // Returns a map from "x,y" to bit index for data bits in the given range.
