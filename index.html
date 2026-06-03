@@ -29,31 +29,20 @@
             border-radius: 4px;
             cursor: pointer;
             box-sizing: border-box;
-            transition: transform 0.1s;
-        }
-        #color-picker div:hover {
-            transform: scale(1.15);
-        }
-        @keyframes nudge {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(3px); }
-            75% { transform: translateX(-3px); }
-        }
-        #color-picker.hint {
-            animation: nudge 0.4s ease-in-out 1s 3;
         }
     </style>
 </head>
 <body>
     <div style="display:flex;gap:1rem;align-items:flex-start">
       <div id="qr-svg"></div>
-      <div id="color-picker" class="hint">
+      <div id="color-picker" style="margin-top:16px">
         <div data-color="#0000aa" style="background:#0000aa;border:3px solid #ff0000" title="Dark"></div>
         <div data-color="#ddeeff" style="background:#ddeeff;border:3px solid transparent" title="Light"></div>
       </div>
     </div>
     <p id="encoded-url" style="font-size:0.85rem;color:#333;font-family:monospace;word-break:break-all;margin-top:1rem"></p>
     <p id="error" style="color:#cc0000;font-size:0.85rem"></p>
+    <p style="font-size:0.85rem"><a href="./" id="reset-link">Reset</a></p>
 
     <script src="dist/qrcodegen.js"></script>
     <script src="dist/demo.js"></script>

@@ -122,6 +122,20 @@ function renderFromBits(): void {
 
 function render(): void {
   error.textContent = "";
+
+  // Check if URL has numeric data to restore
+  const params = location.search.slice(1);
+  let warning = "";
+  if (params) {
+    if (/^[0-9]+$/.test(params) && params.length === numericDigits) {
+      const numSeg = qrcodegen.QrSegment.makeNumeric(params);
+      updateState(numSeg.getData());
+      renderFromBits();
+      return;
+    }
+    warning = "Unrecognized link — starting with a blank canvas.";
+  }
+
   const numericText = "0".repeat(numericDigits);
   const { qr, numSeg } = makeQr(numericText);
 
@@ -140,7 +154,7 @@ function render(): void {
     seg[b] = 0;
   }
   updateState(seg);
-  error.textContent = "";
+  error.textContent = warning;
   renderFromBits();
 }
 
@@ -229,7 +243,6 @@ function setupSvgClicks(): void {
     const wantDark = activeColor === "#0000aa";
     if (isDark === wantDark) return;
     const bitIndex = parseInt(target.getAttribute("data-bit")!);
-    document.getElementById("color-picker")!.classList.remove("hint");
     flipBitN(bitIndex);
   }
 

@@ -107,6 +107,18 @@ function renderFromBits() {
 }
 function render() {
     error.textContent = "";
+    // Check if URL has numeric data to restore
+    const params = location.search.slice(1);
+    let warning = "";
+    if (params) {
+        if (/^[0-9]+$/.test(params) && params.length === numericDigits) {
+            const numSeg = qrcodegen.QrSegment.makeNumeric(params);
+            updateState(numSeg.getData());
+            renderFromBits();
+            return;
+        }
+        warning = "Unrecognized link — starting with a blank canvas.";
+    }
     const numericText = "0".repeat(numericDigits);
     const { qr, numSeg } = makeQr(numericText);
     // Flip bits so all paintable cells start as light blue
@@ -124,7 +136,7 @@ function render() {
         seg[b] = 0;
     }
     updateState(seg);
-    error.textContent = "";
+    error.textContent = warning;
     renderFromBits();
 }
 // Returns a map from "x,y" to bit index for data bits in the given range.
@@ -202,7 +214,6 @@ function setupSvgClicks() {
         if (isDark === wantDark)
             return;
         const bitIndex = parseInt(target.getAttribute("data-bit"));
-        document.getElementById("color-picker").classList.remove("hint");
         flipBitN(bitIndex);
     }
     svgContainer.addEventListener("mousedown", (e) => {
