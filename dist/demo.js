@@ -39,14 +39,20 @@ function decodeNumeric(bits, numDigits) {
     }
     return { text: result, valid };
 }
-const dataPrefix = "http://127.0.0.1:8080/public/index.html?";
-const numericDigits = 88; // How many numeric digits fit in remaining capacity (V4 Low, 1 block)
-let seg;
+const dataPrefix = location.origin + location.pathname.replace(/\/(index\.html)?$/, "") + "?";
 // Convert prefix to byte array (ASCII)
 const prefixBytes = [];
 for (let i = 0; i < dataPrefix.length; i++) {
     prefixBytes.push(dataPrefix.charCodeAt(i));
 }
+// Compute how many numeric digits fit in remaining capacity (V4 Low)
+const v4LowDataBits = 640; // getNumDataCodewords(4, LOW) * 8 = 80 * 8
+const prefixSegBitsTotal = 4 + 8 + dataPrefix.length * 8;
+const numericHeaderBitsTotal = 4 + 10;
+const availableBits = v4LowDataBits - prefixSegBitsTotal - numericHeaderBitsTotal;
+const numericDigits = Math.floor(availableBits / 10) * 3
+    + (availableBits % 10 >= 7 ? 2 : availableBits % 10 >= 4 ? 1 : 0);
+let seg;
 input.value = "0".repeat(numericDigits);
 function makeQr(numericText) {
     const prefixSeg = qrcodegen.QrSegment.makeBytes(prefixBytes);
@@ -62,8 +68,8 @@ function makeQr(numericText) {
 }
 // Byte segment: 4 (mode) + 8 (count) + prefix_len*8 (data) bits
 // Numeric segment: 4 (mode) + 10 (count) + data bits
-const prefixSegBits = 4 + 8 + dataPrefix.length * 8;
-const numericHeaderBits = 4 + 10;
+const prefixSegBits = prefixSegBitsTotal;
+const numericHeaderBits = numericHeaderBitsTotal;
 function buildQrFromRawBits() {
     const prefixSeg = qrcodegen.QrSegment.makeBytes(prefixBytes);
     const numSeg = new qrcodegen.QrSegment(qrcodegen.QrSegment.Mode.NUMERIC, numericDigits, seg.slice());
